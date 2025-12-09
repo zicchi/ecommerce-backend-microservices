@@ -16,6 +16,7 @@ const protect = async (req, res, next) => {
             return next(new AppError('You are not logged in', 401));
         }
 
+        console.log('DEBUG: Verifying token with secret:', process.env.JWT_SECRET.substring(0, 5) + '...');
         const decoded = await verifyToken(token, process.env.JWT_SECRET);
         req.user = { id: decoded.id };
         next();
