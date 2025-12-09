@@ -27,7 +27,7 @@ export const register = async (req, res, next) => {
             },
         });
 
-        const token = signToken(newUser.id, process.env.JWT_SECRET);
+        const token = signToken(newUser.id, process.env.JWT_SECRET, '1d', { role: newUser.role });
 
         res.status(201).json({
             status: 'success',
@@ -60,7 +60,7 @@ export const login = async (req, res, next) => {
             return next(new AppError('Incorrect email or password', 401));
         }
 
-        const token = signToken(user.id, process.env.JWT_SECRET);
+        const token = signToken(user.id, process.env.JWT_SECRET, '1d', { role: user.role });
 
         res.status(200).json({
             status: 'success',

@@ -20,8 +20,8 @@ export const logger = {
 };
 
 // JWT Utilities
-export const signToken = (id, secret, expiresIn = '1d') => {
-  return jwt.sign({ id }, secret, {
+export const signToken = (id, secret, expiresIn = '1d', payload = {}) => {
+  return jwt.sign({ id, ...payload }, secret, {
     expiresIn,
   });
 };

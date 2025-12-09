@@ -101,7 +101,35 @@ Jika tersedia script dev dengan nodemon
 
 ```bash
 npm run dev -w services/api-gateway
+npm run dev -w services/api-gateway
 ```
+
+### 6. Seeding Data User & Produk
+
+Untuk mengisi database dengan data awal (User Admin & Produk Dummy):
+
+**User & Admin:**
+```bash
+# Di dalam folder services/user-service
+npx prisma db seed
+```
+
+**Produk:**
+```bash
+# Di dalam folder services/product-service
+npx prisma db seed
+```
+
+### 7. Akses & Kredensial
+
+Setelah seeding, Anda dapat menggunakan akun berikut untuk Login:
+
+| Role | Email | Password | Akses |
+|------|-------|----------|-------|
+| **Admin** | `admin@example.com` | `admin123` | Full Access (Create/Edit/Delete Product) |
+| **User** | `user@cc.cc` | `admin123` | View Product, Create Order |
+
+> **Catatan Penting**: Sejak update terakhir, service `product-service` menerapkan **Role-Based Access Control (RBAC)**. Hanya token dari user dengan role `admin` yang bisa melakukan operasi tulis (POST/PUT/DELETE) pada produk. Pastikan login ulang untuk mendapatkan token terbaru.
 
 ## Dokumentasi API
 

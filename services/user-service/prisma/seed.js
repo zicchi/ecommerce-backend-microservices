@@ -19,7 +19,18 @@ async function main() {
         },
     });
 
-    console.log(`Created (or found) admin user with id: ${admin.id}`);
+    const user = await prisma.user.upsert({
+        where: { email: 'user@cc.cc' },
+        update: {},
+        create: {
+            email: 'user@cc.cc',
+            name: 'User',
+            password_hash: passwordHash,
+            role: 'customer',
+        },
+    });
+
+    console.log(`Created (or found) admin user with id: ${admin.id} and user with id: ${user.id}`);
     console.log('Seeding finished.');
 }
 
