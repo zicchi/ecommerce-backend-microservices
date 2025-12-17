@@ -1,8 +1,8 @@
 import express from 'express';
+import { verifyToken, AppError } from '@ecommerce/shared';
 import * as orderController from '../controllers/orderController.js';
 import * as legacyOrderController from '../controllers/legacyOrderController.js';
-
-import { verifyToken, AppError } from '@ecommerce/shared';
+import * as optimizedOrderController from '../controllers/optimizedOrderController.js';
 
 const router = express.Router();
 
@@ -18,7 +18,6 @@ const protect = async (req, res, next) => {
             return next(new AppError('You are not logged in', 401));
         }
 
-        console.log('DEBUG: Verifying token with secret:', process.env.JWT_SECRET.substring(0, 5) + '...');
         const decoded = await verifyToken(token, process.env.JWT_SECRET);
         req.user = { id: decoded.id };
         next();
@@ -33,8 +32,10 @@ router.get('/metrics', (req, res) => {
     res.json(process.cpuUsage());
 });
 
-router.post('/', orderController.createOrder);
-router.post('/legacy', legacyOrderController.createOrder);
+router.post('/', orderController.createOrder); // Original (Clean Arch)
+router.post('/optimized', optimizedOrderController.createOrder); // Optimized (Parallel)
+router.post('/legacy', legacyOrderController.createOrder); // Legacy (Monolith)
+
 router.get('/my-orders', orderController.getMyOrders);
 router.get('/:id', orderController.getOrder);
 router.patch('/:id/cancel', orderController.cancelOrder);

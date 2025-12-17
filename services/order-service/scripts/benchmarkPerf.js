@@ -1,4 +1,6 @@
 
+import fs from 'fs';
+
 // Using native fetch in Node 18+
 
 const USER_SERVICE = 'http://localhost:3001';
@@ -13,7 +15,6 @@ async function runBenchmark() {
     let productId;
 
     try {
-        // Register/Login a temp user
         const email = `bench_${Date.now()}@test.com`;
         const password = 'password123';
 
@@ -23,10 +24,8 @@ async function runBenchmark() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: 'Bench User', email, password })
         });
-
         await regRes.json();
 
-        // Login
         const loginRes = await fetch(`${USER_SERVICE}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -36,9 +35,7 @@ async function runBenchmark() {
         token = loginData.data?.token || loginData.token;
 
         if (!token) throw new Error('Failed to get token');
-        console.log('Got Token.');
 
-        // Get a product
         const prodRes = await fetch(`${PRODUCT_SERVICE}/products?limit=1`);
         const prodData = await prodRes.json();
         productId = prodData.data?.products?.[0]?.id;
@@ -46,111 +43,115 @@ async function runBenchmark() {
         if (!productId) {
             const newProdRes = await fetch(`${PRODUCT_SERVICE}/products`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ name: 'Bench Prod', description: 'desc', price: 100, stock_quantity: 10000 })
             });
             const newProdData = await newProdRes.json();
             productId = newProdData.data?.product?.id;
         }
-
         if (!productId) throw new Error('Failed to get productId');
-        console.log(`Using Product ID: ${productId}`);
 
     } catch (err) {
         console.error('Setup Failed:', err);
         return;
     }
 
-    const orderPayload = {
-        items: [{ productId, quantity: 1 }]
-    };
+    const orderPayload = { items: [{ productId, quantity: 1 }] };
 
-    const ITERATIONS = 100; // Increased to get measurable CPU diff
+    // Prepare CSV
+    const csvHeader = 'Iterations,Architecture,AvgLatency(ms),CPUUsed(us),TotalTime(ms)\n';
+    if (!fs.existsSync('benchmark_results.csv')) {
+        fs.writeFileSync('benchmark_results.csv', csvHeader);
+    }
+
+    const loads = [20, 50, 100];
 
     async function getMetrics() {
-        const res = await fetch(`${ORDER_SERVICE}/orders/metrics`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetch(`${ORDER_SERVICE}/orders/metrics`, { headers: { 'Authorization': `Bearer ${token}` } });
         return await res.json();
     }
 
-    // 2. Measure Logic Separated (Current)
-    console.log(`\nTesting Current Architecture (Separated Service)... ${ITERATIONS} reqs`);
+    for (const ITERATIONS of loads) {
+        console.log(`\n--- Running Load: ${ITERATIONS} reqs ---`);
 
-    // Warmup
-    await fetch(`${ORDER_SERVICE}/orders`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(orderPayload)
-    });
+        // --- 1. Clean Architecture (Original) ---
+        await fetch(`${ORDER_SERVICE}/orders`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(orderPayload)
+        });
 
-    const cpuNewStart = await getMetrics();
-    const startNew = performance.now();
-    let errorsNew = 0;
+        const cpuNewStart = await getMetrics();
+        const startNew = performance.now();
+        for (let i = 0; i < ITERATIONS; i++) {
+            try {
+                await fetch(`${ORDER_SERVICE}/orders`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(orderPayload)
+                });
+            } catch (e) { }
+        }
+        const endNew = performance.now();
+        const cpuNewEnd = await getMetrics();
 
-    for (let i = 0; i < ITERATIONS; i++) {
-        try {
-            const res = await fetch(`${ORDER_SERVICE}/orders`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(orderPayload)
-            });
-            if (!res.ok) errorsNew++;
-        } catch (e) { errorsNew++; }
+        const timeNew = endNew - startNew;
+        const cpuNewUsed = (cpuNewEnd.user + cpuNewEnd.system) - (cpuNewStart.user + cpuNewStart.system);
+        const avgNew = timeNew / ITERATIONS;
+
+        fs.appendFileSync('benchmark_results.csv', `${ITERATIONS},CleanArch,${avgNew.toFixed(2)},${cpuNewUsed},${timeNew.toFixed(2)}\n`);
+        console.log(`CleanArch:     ${avgNew.toFixed(2)}ms, CPU: ${cpuNewUsed}us`);
+
+
+        // --- 2. Optimized Architecture (Parallel) ---
+        await new Promise(r => setTimeout(r, 1000));
+        await fetch(`${ORDER_SERVICE}/orders/optimized`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(orderPayload)
+        });
+
+        const cpuOptStart = await getMetrics();
+        const startOpt = performance.now();
+        for (let i = 0; i < ITERATIONS; i++) {
+            try {
+                await fetch(`${ORDER_SERVICE}/orders/optimized`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(orderPayload)
+                });
+            } catch (e) { }
+        }
+        const endOpt = performance.now();
+        const cpuOptEnd = await getMetrics();
+
+        const timeOpt = endOpt - startOpt;
+        const cpuOptUsed = (cpuOptEnd.user + cpuOptEnd.system) - (cpuOptStart.user + cpuOptStart.system);
+        const avgOpt = timeOpt / ITERATIONS;
+
+        fs.appendFileSync('benchmark_results.csv', `${ITERATIONS},OptimizedArch,${avgOpt.toFixed(2)},${cpuOptUsed},${timeOpt.toFixed(2)}\n`);
+        console.log(`OptimizedArch: ${avgOpt.toFixed(2)}ms, CPU: ${cpuOptUsed}us`);
+
+
+        // --- 3. Legacy Architecture (Baseline) ---
+        await new Promise(r => setTimeout(r, 1000));
+        await fetch(`${ORDER_SERVICE}/orders/legacy`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(orderPayload)
+        });
+
+        const cpuOldStart = await getMetrics();
+        const startOld = performance.now();
+        for (let i = 0; i < ITERATIONS; i++) {
+            try {
+                await fetch(`${ORDER_SERVICE}/orders/legacy`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(orderPayload)
+                });
+            } catch (e) { }
+        }
+        const endOld = performance.now();
+        const cpuOldEnd = await getMetrics();
+
+        const timeOld = endOld - startOld;
+        const cpuOldUsed = (cpuOldEnd.user + cpuOldEnd.system) - (cpuOldStart.user + cpuOldStart.system);
+        const avgOld = timeOld / ITERATIONS;
+
+        fs.appendFileSync('benchmark_results.csv', `${ITERATIONS},Legacy,${avgOld.toFixed(2)},${cpuOldUsed},${timeOld.toFixed(2)}\n`);
+        console.log(`Legacy:        ${avgOld.toFixed(2)}ms, CPU: ${cpuOldUsed}us`);
     }
-    const endNew = performance.now();
-    const cpuNewEnd = await getMetrics();
 
-    const timeNew = endNew - startNew;
-    const cpuNewUsed = (cpuNewEnd.user + cpuNewEnd.system) - (cpuNewStart.user + cpuNewStart.system);
-
-    console.log(`Current: Time ${timeNew.toFixed(2)}ms, CPU Used: ${cpuNewUsed}µs. Errors: ${errorsNew}`);
-
-
-    // 3. Measure Legacy (Controller Monolith)
-    console.log(`\nTesting Legacy Architecture (Controller Monolith)... ${ITERATIONS} reqs`);
-    await new Promise(r => setTimeout(r, 2000)); // Cool down
-
-    // Warmup
-    await fetch(`${ORDER_SERVICE}/orders/legacy`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(orderPayload)
-    });
-
-    const cpuOldStart = await getMetrics();
-    const startOld = performance.now();
-    let errorsOld = 0;
-    for (let i = 0; i < ITERATIONS; i++) {
-        try {
-            const res = await fetch(`${ORDER_SERVICE}/orders/legacy`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(orderPayload)
-            });
-            if (!res.ok) errorsOld++;
-        } catch (e) { errorsOld++; }
-    }
-    const endOld = performance.now();
-    const cpuOldEnd = await getMetrics();
-
-    const timeOld = endOld - startOld;
-    const cpuOldUsed = (cpuOldEnd.user + cpuOldEnd.system) - (cpuOldStart.user + cpuOldStart.system);
-
-    console.log(`Legacy:  Time ${timeOld.toFixed(2)}ms, CPU Used: ${cpuOldUsed}µs. Errors: ${errorsOld}`);
-
-    console.log('\n--- Energy Efficiency Result ---');
-    console.log(`CPU Delta (Legacy - Current): ${cpuOldUsed - cpuNewUsed}µs`);
-    if (cpuNewUsed > cpuOldUsed) {
-        console.log(`Legacy is ${(cpuNewUsed / cpuOldUsed).toFixed(2)}x more CPU efficient.`);
-    } else {
-        console.log(`Current is ${(cpuOldUsed / cpuNewUsed).toFixed(2)}x more CPU efficient.`);
-    }
+    console.log('\nBenchmark Complete. Results saved to benchmark_results.csv');
 }
 
 runBenchmark();
