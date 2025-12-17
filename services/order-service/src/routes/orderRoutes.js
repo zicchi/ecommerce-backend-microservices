@@ -1,5 +1,7 @@
 import express from 'express';
 import * as orderController from '../controllers/orderController.js';
+import * as legacyOrderController from '../controllers/legacyOrderController.js';
+
 import { verifyToken, AppError } from '@ecommerce/shared';
 
 const router = express.Router();
@@ -27,7 +29,12 @@ const protect = async (req, res, next) => {
 
 router.use(protect);
 
+router.get('/metrics', (req, res) => {
+    res.json(process.cpuUsage());
+});
+
 router.post('/', orderController.createOrder);
+router.post('/legacy', legacyOrderController.createOrder);
 router.get('/my-orders', orderController.getMyOrders);
 router.get('/:id', orderController.getOrder);
 router.patch('/:id/cancel', orderController.cancelOrder);
