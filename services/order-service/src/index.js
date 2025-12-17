@@ -32,7 +32,10 @@ app.use((err, req, res, next) => {
     });
 });
 
+import { initInventorySubscriber } from './subscribers/inventorySubscriber.js';
+
 const PORT = process.env.PORT || 3003;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     logger.info(`Order Service running on port ${PORT}`);
+    await initInventorySubscriber();
 });

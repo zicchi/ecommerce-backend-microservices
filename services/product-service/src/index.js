@@ -5,7 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import { logger } from '@ecommerce/shared';
 import productRoutes from './routes/productRoutes.js';
-import { createClient } from 'redis';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,7 +33,10 @@ app.use((err, req, res, next) => {
     });
 });
 
+import { initOrderSubscriber } from './subscribers/orderSubscriber.js';
+
 const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     logger.info(`Product Service running on port ${PORT}`);
+    await initOrderSubscriber();
 });

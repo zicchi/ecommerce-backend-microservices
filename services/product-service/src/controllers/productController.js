@@ -1,3 +1,7 @@
+import { AppError } from '@ecommerce/shared';
+import productService from '../services/productService.js';
+
+/* [DEPRECATED] Moved to ProductService and OrderSubscriber
 import { PrismaClient } from '@prisma/client';
 import { createClient } from 'redis';
 import { AppError, logger } from '@ecommerce/shared';
@@ -70,11 +74,18 @@ const invalidateProductCache = async () => {
         await redisClient.del(keys);
     }
 };
+*/
 
 export const getAllProducts = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
+
+        const response = await productService.getAllProducts(page, limit);
+
+        res.status(200).json(response);
+
+        /* [DEPRECATED] Moved to ProductService.getAllProducts
         const skip = (page - 1) * limit;
 
         const cacheKey = `products:${page}:${limit}`;
@@ -104,6 +115,7 @@ export const getAllProducts = async (req, res, next) => {
         await redisClient.setEx(cacheKey, CACHE_EXPIRATION, JSON.stringify(response));
 
         res.status(200).json(response);
+        */
     } catch (err) {
         next(err);
     }
@@ -112,6 +124,11 @@ export const getAllProducts = async (req, res, next) => {
 export const getProduct = async (req, res, next) => {
     try {
         const { id } = req.params;
+        const response = await productService.getProduct(id);
+
+        res.status(200).json(response);
+
+        /* [DEPRECATED] Moved to ProductService.getProduct
         const cacheKey = `products:${id}`;
         const cachedProduct = await redisClient.get(cacheKey);
 
@@ -135,6 +152,7 @@ export const getProduct = async (req, res, next) => {
         await redisClient.setEx(cacheKey, CACHE_EXPIRATION, JSON.stringify(response));
 
         res.status(200).json(response);
+        */
     } catch (err) {
         next(err);
     }
@@ -142,6 +160,14 @@ export const getProduct = async (req, res, next) => {
 
 export const createProduct = async (req, res, next) => {
     try {
+        const newProduct = await productService.createProduct(req.body);
+
+        res.status(201).json({
+            status: 'success',
+            data: { product: newProduct },
+        });
+
+        /* [DEPRECATED] Moved to ProductService.createProduct
         const { name, description, price, stock_quantity } = req.body;
 
         const newProduct = await prisma.product.create({
@@ -159,6 +185,7 @@ export const createProduct = async (req, res, next) => {
             status: 'success',
             data: { product: newProduct },
         });
+        */
     } catch (err) {
         next(err);
     }
@@ -167,6 +194,14 @@ export const createProduct = async (req, res, next) => {
 export const updateProduct = async (req, res, next) => {
     try {
         const { id } = req.params;
+        const updatedProduct = await productService.updateProduct(id, req.body);
+
+        res.status(200).json({
+            status: 'success',
+            data: { product: updatedProduct },
+        });
+
+        /* [DEPRECATED] Moved to ProductService.updateProduct
         const { name, description, price, stock_quantity } = req.body;
 
         const updatedProduct = await prisma.product.update({
@@ -186,6 +221,7 @@ export const updateProduct = async (req, res, next) => {
             status: 'success',
             data: { product: updatedProduct },
         });
+        */
     } catch (err) {
         next(err);
     }
@@ -194,7 +230,14 @@ export const updateProduct = async (req, res, next) => {
 export const deleteProduct = async (req, res, next) => {
     try {
         const { id } = req.params;
+        await productService.deleteProduct(id);
 
+        res.status(204).json({
+            status: 'success',
+            data: null,
+        });
+
+        /* [DEPRECATED] Moved to ProductService.deleteProduct
         await prisma.product.delete({
             where: { id: parseInt(id) },
         });
@@ -206,6 +249,7 @@ export const deleteProduct = async (req, res, next) => {
             status: 'success',
             data: null,
         });
+        */
     } catch (err) {
         next(err);
     }

@@ -26,6 +26,7 @@ export const signToken = (id, secret, expiresIn = '1d', payload = {}) => {
   });
 };
 
+
 export const verifyToken = (token, secret) => {
   return new Promise((resolve, reject) => {
     jwt.verify(token, secret, (err, decoded) => {
@@ -34,3 +35,5 @@ export const verifyToken = (token, secret) => {
     });
   });
 };
+
+export * from './redisClient.js';

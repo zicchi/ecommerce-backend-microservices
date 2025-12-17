@@ -1,3 +1,7 @@
+import { AppError } from '@ecommerce/shared';
+import orderService from '../services/orderService.js';
+
+/* [DEPRECATED] Moved to OrderService and InventorySubscriber
 import { PrismaClient } from '@prisma/client';
 import { createClient } from 'redis';
 import axios from 'axios';
@@ -25,12 +29,21 @@ redisSubscriber.subscribe('inventory-confirmed', async (message) => {
         logger.error('Error processing inventory confirmation', err);
     }
 });
+*/
 
 export const createOrder = async (req, res, next) => {
     try {
-        const { items } = req.body; // items: [{ productId, quantity }]
+        const { items } = req.body;
         const userId = req.user.id;
 
+        const newOrder = await orderService.createOrder(userId, items);
+
+        res.status(201).json({
+            status: 'success',
+            data: { order: newOrder },
+        });
+
+        /* [DEPRECATED] Moved to OrderService.createOrder
         if (!items || items.length === 0) {
             return next(new AppError('No items in order', 400));
         }
@@ -86,6 +99,7 @@ export const createOrder = async (req, res, next) => {
             status: 'success',
             data: { order: newOrder },
         });
+        */
     } catch (err) {
         next(err);
     }
@@ -94,6 +108,14 @@ export const createOrder = async (req, res, next) => {
 export const getOrder = async (req, res, next) => {
     try {
         const { id } = req.params;
+        const order = await orderService.getOrder(id, req.user.id);
+
+        res.status(200).json({
+            status: 'success',
+            data: { order },
+        });
+
+        /* [DEPRECATED] Moved to OrderService.getOrder
         const order = await prisma.order.findUnique({
             where: { id: parseInt(id) },
             include: { items: true },
@@ -112,6 +134,7 @@ export const getOrder = async (req, res, next) => {
             status: 'success',
             data: { order },
         });
+        */
     } catch (err) {
         next(err);
     }
@@ -119,6 +142,15 @@ export const getOrder = async (req, res, next) => {
 
 export const getMyOrders = async (req, res, next) => {
     try {
+        const orders = await orderService.getMyOrders(req.user.id);
+
+        res.status(200).json({
+            status: 'success',
+            results: orders.length,
+            data: { orders },
+        });
+
+        /* [DEPRECATED] Moved to OrderService.getMyOrders
         const orders = await prisma.order.findMany({
             where: { user_id: req.user.id },
             include: { items: true },
@@ -130,6 +162,7 @@ export const getMyOrders = async (req, res, next) => {
             results: orders.length,
             data: { orders },
         });
+        */
     } catch (err) {
         next(err);
     }
@@ -138,6 +171,14 @@ export const getMyOrders = async (req, res, next) => {
 export const cancelOrder = async (req, res, next) => {
     try {
         const { id } = req.params;
+        const updatedOrder = await orderService.cancelOrder(id, req.user.id);
+
+        res.status(200).json({
+            status: 'success',
+            data: { order: updatedOrder },
+        });
+
+        /* [DEPRECATED] Moved to OrderService.cancelOrder
         const order = await prisma.order.findUnique({ where: { id: parseInt(id) } });
 
         if (!order) {
@@ -169,6 +210,7 @@ export const cancelOrder = async (req, res, next) => {
             status: 'success',
             data: { order: updatedOrder },
         });
+        */
     } catch (err) {
         next(err);
     }
