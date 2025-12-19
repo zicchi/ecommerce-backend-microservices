@@ -4,7 +4,11 @@ import { logger } from './index.js';
 let publisher;
 let subscriber;
 
-const getRedisUrl = () => process.env.REDIS_URL || 'redis://localhost:6379';
+const getRedisUrl = () => {
+    const url = process.env.REDIS_URL;
+    logger.info(`Attempting Redis connection to: ${url || 'DEFAULT (localhost)'}`);
+    return url || 'redis://localhost:6379';
+};
 
 export const getRedisClient = async (type = 'publisher') => {
     if (type === 'subscriber') {
