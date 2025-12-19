@@ -67,9 +67,9 @@ export const deleteProduct = async (req, res, next) => {
         const { id } = req.params;
         await productService.deleteProduct(id);
 
-        res.status(204).json({
+        res.status(200).json({
             status: 'success',
-            data: null,
+            message: `product ${id} deleted successfully`,
         });
 
 
