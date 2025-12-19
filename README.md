@@ -154,7 +154,6 @@ Setelah seeding, Anda dapat menggunakan akun berikut untuk Login:
 | **Admin** | `admin@example.com` | `admin123` | Full Access (Create/Edit/Delete Product) |
 | **User** | `user@cc.cc` | `admin123` | View Product, Create Order |
 
-> **Catatan Penting**: Sejak update terakhir, service `product-service` menerapkan **Role-Based Access Control (RBAC)**. Hanya token dari user dengan role `admin` yang bisa melakukan operasi tulis (POST/PUT/DELETE) pada produk. Pastikan login ulang untuk mendapatkan token terbaru.
 
 ## Dokumentasi API
 
