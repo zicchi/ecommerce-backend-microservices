@@ -36,7 +36,56 @@ Pastikan perangkat sudah terpasang:
 * Node.js versi 18 atau lebih baru
 * Docker Desktop
 
-## Cara Menjalankan Project
+## Cara Menjalankan Project (Docker)
+
+Metode ini paling mudah karena semua service, database, dan redis akan dijalankan otomatis dalam container.
+
+### 1. Setup Environment
+Karena file `.env` bersifat rahasia, Anda perlu membuatnya dari contoh yang ada.
+
+1.  Copy file `.env.example` di root folder.
+2.  Rename menjadi `.env`.
+3.  Sesuaikan isinya (password DB, dll) jika perlu.
+
+### 2. Build & Run
+Jalankan perintah ini di terminal root:
+
+```bash
+docker-compose up --build
+```
+Tunggu hingga semua container (gateway, services, postgres, redis) berstatus `Started`.
+
+### 3. Migrasi Database (Pertama Kali)
+Karena database di dalam Docker masih kosong, kita perlu membuat tabelnya secara manual.
+Buka terminal baru, lalu jalankan:
+
+```bash
+# Migrasi User Service
+docker exec ecommerce_user_service npx prisma db push
+
+# Migrasi Product Service
+docker exec ecommerce_product_service npx prisma db push
+
+# Migrasi Order Service
+docker exec ecommerce_order_service npx prisma db push
+```
+
+### 4. Seeding Data (Optional)
+Untuk mengisi data awal (Admin & Produk Dummy):
+
+```bash
+# Isi data User (Admin & User Biasa)
+docker exec ecommerce_user_service node prisma/seed.js
+
+# Isi data Produk Dummy (20 items)
+docker exec ecommerce_product_service node prisma/seed.js
+```
+
+---
+
+## Cara Menjalankan Project (Manual / Tanpa Docker)
+
+Gunakan cara ini jika Anda ingin menjalankan satu per satu service secara manual untuk development.
 
 ### 1. Instalasi Dependencies
 
@@ -48,42 +97,25 @@ npm install
 
 ### 2. Menjalankan Database dan Redis
 
-Gunakan Docker Compose.
+Gunakan Docker Compose hanya untuk DB & Redis (bukan servicenya).
 
+I. Edit `docker-compose.yml`, comment/hapus bagian service (api-gateway, user-service, dll), sisakan `postgres` dan `redis`.
+II. Jalankan:
 ```bash
 docker-compose up -d
 ```
 
 ### 3. Konfigurasi Environment
 
-Setiap service membutuhkan file .env sendiri. Sesuaikan dengan konfigurasi service masing-masing.
-
-Contoh untuk API Gateway
-
-```env
-PORT=3000
-USER_SERVICE_URL=http://localhost:3001
-PRODUCT_SERVICE_URL=http://localhost:3002
-ORDER_SERVICE_URL=http://localhost:3003
-```
-
-Contoh variabel umum untuk setiap service
-
-```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/ecommerce_db?schema=public"
-JWT_SECRET="rahasia_sangat_aman"
-REDIS_URL="redis://localhost:6379"
-```
-
-Pastikan lokasi file .env sesuai dengan konfigurasi yang dibaca di index.js masing-masing service.
+Setiap service membutuhkan file .env sendiri di folder masing-masing (`services/user-service/.env`, dll).
+Pastikan `DATABASE_URL` mengarah ke `localhost:5432`.
 
 ### 4. Migrasi Database
 
-Setiap service yang memiliki schema harus menjalankan migrasinya sendiri.
-
 ```bash
 cd services/user-service
-npx prisma migrate dev --name init
+npx prisma db push
+# Ulangi untuk service lain...
 ```
 
 ### 5. Menjalankan Aplikasi
@@ -91,17 +123,10 @@ npx prisma migrate dev --name init
 Jalankan masing-masing service di terminal berbeda.
 
 ```bash
-npm start -w services/api-gateway
-npm start -w services/user-service
-npm start -w services/product-service
-npm start -w services/order-service
-```
-
-Jika tersedia script dev dengan nodemon
-
-```bash
 npm run dev -w services/api-gateway
-npm run dev -w services/api-gateway
+npm run dev -w services/user-service
+npm run dev -w services/product-service
+npm run dev -w services/order-service
 ```
 
 ### 6. Seeding Data User & Produk
@@ -129,7 +154,6 @@ Setelah seeding, Anda dapat menggunakan akun berikut untuk Login:
 | **Admin** | `admin@example.com` | `admin123` | Full Access (Create/Edit/Delete Product) |
 | **User** | `user@cc.cc` | `admin123` | View Product, Create Order |
 
-> **Catatan Penting**: Sejak update terakhir, service `product-service` menerapkan **Role-Based Access Control (RBAC)**. Hanya token dari user dengan role `admin` yang bisa melakukan operasi tulis (POST/PUT/DELETE) pada produk. Pastikan login ulang untuk mendapatkan token terbaru.
 
 ## Dokumentasi API
 

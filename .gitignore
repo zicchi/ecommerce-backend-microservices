@@ -32,3 +32,10 @@ Thumbs.db
 *.swo
 tutorial.md
 ecommerce_postman_collection.json
+docs/doc_01_root_architecture.md
+docs/doc_02_shared_package.md
+docs/doc_03_api_gateway.md
+docs/doc_04_user_service.md
+docs/doc_05_product_service.md
+docs/doc_06_order_service.md
+docs/prisma_database.md

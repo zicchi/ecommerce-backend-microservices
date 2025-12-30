@@ -16,7 +16,8 @@ class OrderService {
         // Validate Products & Calculate Total
         for (const item of items) {
             try {
-                const productRes = await axios.get(`${process.env.PRODUCT_SERVICE_URL}/${item.productId}`);
+                const productRes = await axios.get(`${process.env.PRODUCT_SERVICE_URL}/products/${item.productId}`);
+
                 const product = productRes.data.data.product;
 
                 if (product.stock_quantity < item.quantity) {

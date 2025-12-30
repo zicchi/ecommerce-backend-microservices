@@ -1,17 +1,8 @@
-import { PrismaClient } from '@prisma/client';
-import { AppError } from '@ecommerce/shared';
-
-const prisma = new PrismaClient();
+import userService from '../services/userService.js';
 
 export const getMe = async (req, res, next) => {
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: req.user.id },
-        });
-
-        if (!user) {
-            return next(new AppError('User not found', 404));
-        }
+        const user = await userService.getUserById(req.user.id);
 
         res.status(200).json({
             status: 'success',
